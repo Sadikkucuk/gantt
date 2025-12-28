@@ -12,8 +12,8 @@ function parseCSV(text) {
     const d = {};
     headers.forEach((h, i) => d[h.trim()] = (cols[i] || "").replace(/"/g, "").trim());
 
-    const level = parseInt(d["Outline Level"]);
-    const id = parseInt(d["ID"]);
+    const level = parseInt(d["Outline Level"] || "1", 10);
+    const id = parseInt(d["ID"], 10);
     if (!id || !d["Start"] || !d["Finish"]) return;
 
     let parentId = null;
@@ -25,13 +25,12 @@ function parseCSV(text) {
       name: d["Name"] || "Unnamed task",
       start: d["Start"],
       end: d["Finish"],
-      level: level || 1,
+      level,
       parentId,
-      progress: parseInt(d["% Complete"] || "0"),
+      progress: parseInt(d["% Complete"] || "0", 10),
       type: d["Start"] === d["Finish"] ? "milestone" : "task"
     });
   });
 
-  console.log("Parsed tasks:", tasks.length);
   return tasks;
 }
