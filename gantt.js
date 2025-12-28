@@ -1,3 +1,25 @@
+// ===== COLOR SYSTEM (FINAL) =====
+const levelColors = [
+  "#2E7D32", // green
+  "#1565C0", // blue
+  "#C62828", // red
+  "#EF6C00", // orange
+  "#6A1B9A"  // purple
+];
+
+function adjustColor(hex, delta) {
+  const num = parseInt(hex.replace("#", ""), 16);
+  let r = (num >> 16) + delta;
+  let g = ((num >> 8) & 0xff) + delta;
+  let b = (num & 0xff) + delta;
+
+  r = Math.max(0, Math.min(255, r));
+  g = Math.max(0, Math.min(255, g));
+  b = Math.max(0, Math.min(255, b));
+
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
 const svg = document.getElementById("gantt-svg");
 const taskList = document.getElementById("task-list");
 
