@@ -1,40 +1,38 @@
+console.log("gantt.js loaded v12");
+
 const svg = document.getElementById("gantt-svg");
 const taskList = document.getElementById("task-list");
 
-let currentZoom = "day";
+// IMPORTANT: var -> export.js erişimi stabil olsun
+var currentZoom = "day";
 const zoomPx = { day: 30, week: 12, month: 6 };
 
-// Export sırasında otomatik küçültme için layout preset
+// Export sırasında küçültme presetleri
 const layoutPresets = [
-  { name: "normal",  rowH: 40, barH: 20, font: 12, left: 220, dayScale: 1.00 },
-  { name: "compact1",rowH: 32, barH: 16, font: 11, left: 200, dayScale: 0.85 },
-  { name: "compact2",rowH: 28, barH: 14, font: 10, left: 185, dayScale: 0.75 },
-  { name: "compact3",rowH: 24, barH: 12, font:  9, left: 170, dayScale: 0.65 }
+  { rowH: 40, barH: 20, font: 12, left: 220, dayScale: 1.00 }, // normal
+  { rowH: 32, barH: 16, font: 11, left: 205, dayScale: 0.85 }, // compact1
+  { rowH: 28, barH: 14, font: 10, left: 190, dayScale: 0.75 }, // compact2
+  { rowH: 24, barH: 12, font:  9, left: 175, dayScale: 0.65 }  // compact3
 ];
+var currentPresetIndex = 0;
 
-let currentPresetIndex = 0;
-
-// 5-level fixed color palette
+// 5 level sabit renk
 const levelColors = ["#2E7D32", "#1565C0", "#C62828", "#EF6C00", "#6A1B9A"];
 
 function adjustColor(hex, delta) {
-  const num = parseInt(hex.replace("#", ""), 16);
+  const num = parseInt(hex.replace("#",""), 16);
   let r = (num >> 16) + delta;
-  let g = ((num >> 8) & 0xff) + delta;
-  let b = (num & 0xff) + delta;
-
+  let g = ((num >> 8) & 255) + delta;
+  let b = (num & 255) + delta;
   r = Math.max(0, Math.min(255, r));
   g = Math.max(0, Math.min(255, g));
   b = Math.max(0, Math.min(255, b));
-
-  return `rgb(${r}, ${g}, ${b})`;
+  return `rgb(${r},${g},${b})`;
 }
 
-function applyPreset(presetIndex) {
-  currentPresetIndex = Math.max(0, Math.min(layoutPresets.length - 1, presetIndex));
+function applyPreset(idx) {
+  currentPresetIndex = Math.max(0, Math.min(layoutPresets.length - 1, idx));
   const p = layoutPresets[currentPresetIndex];
-
-  // CSS vars (task list)
   document.documentElement.style.setProperty("--row-height", `${p.rowH}px`);
   document.documentElement.style.setProperty("--task-font-size", `${p.font}px`);
 }
@@ -62,10 +60,10 @@ function renderGantt() {
   const barHeight = p.barH;
   const leftOffset = p.left;
 
-  // Header heights (Quarter band + date row)
-  const quarterHeaderH = 18;
-  const dateHeaderH = 16;
-  const topMargin = quarterHeaderH + dateHeaderH + 10;
+  // headers: quarter + date
+  const quarterH = 18;
+  const dateH = 16;
+  const topMargin = quarterH + dateH + 10;
 
   svg.innerHTML = "";
   taskList.innerHTML = "";
@@ -80,45 +78,38 @@ function renderGantt() {
   svg.setAttribute("width", leftOffset + totalDays * dayWidth);
   svg.setAttribute("height", topMargin + window.tasks.length * rowHeight);
 
-  // draw header + grid + tasks
-  drawQuarterHeader(minDate, maxDate, dayWidth, leftOffset, quarterHeaderH);
-  drawDateHeader(minDate, totalDays, dayWidth, leftOffset, quarterHeaderH, dateHeaderH);
+  drawQuarterHeader(minDate, maxDate, dayWidth, leftOffset, quarterH);
+  drawDateHeader(minDate, totalDays, dayWidth, leftOffset, quarterH);
   drawGrid(totalDays, dayWidth, leftOffset, topMargin);
   drawTasks(minDate, dayWidth, leftOffset, topMargin, rowHeight, barHeight);
 }
 
-function drawQuarterHeader(minDate, maxDate, dayWidth, leftOffset, quarterHeaderH) {
-  // Quarter segments between minDate..maxDate
-  const start = new Date(minDate.getFullYear(), minDate.getMonth(), 1);
+function drawQuarterHeader(minDate, maxDate, dayWidth, leftOffset, quarterH) {
+  // Quarter start helper
+  const qStartMonth = m => Math.floor(m / 3) * 3;
+
+  let cur = new Date(minDate.getFullYear(), qStartMonth(minDate.getMonth()), 1);
   const end = new Date(maxDate.getFullYear(), maxDate.getMonth(), 1);
 
-  // helper: quarter start month
-  const qStartMonth = (m) => Math.floor(m / 3) * 3;
-
-  let cur = new Date(start.getFullYear(), qStartMonth(start.getMonth()), 1);
-
-  // if cur is after minDate’s quarter start already ok; else it’s quarter start
   while (cur <= end) {
     const q = Math.floor(cur.getMonth() / 3) + 1;
     const segStart = new Date(cur);
-    const segEnd = new Date(cur.getFullYear(), cur.getMonth() + 3, 1); // next quarter start
+    const segEnd = new Date(cur.getFullYear(), cur.getMonth() + 3, 1);
 
-    const clippedStart = segStart < minDate ? new Date(minDate) : segStart;
-    const clippedEnd = segEnd > maxDate ? new Date(maxDate.getTime() + 86400000) : segEnd; // include last day
+    const clipStart = segStart < minDate ? new Date(minDate) : segStart;
+    const clipEnd = segEnd > maxDate ? new Date(maxDate.getTime() + 86400000) : segEnd;
 
-    const x1 = leftOffset + ((clippedStart - minDate) / 86400000) * dayWidth;
-    const x2 = leftOffset + ((clippedEnd - minDate) / 86400000) * dayWidth;
+    const x1 = leftOffset + ((clipStart - minDate) / 86400000) * dayWidth;
+    const x2 = leftOffset + ((clipEnd - minDate) / 86400000) * dayWidth;
 
-    // background band
     const band = document.createElementNS("http://www.w3.org/2000/svg", "rect");
     band.setAttribute("x", x1);
     band.setAttribute("y", 0);
     band.setAttribute("width", Math.max(0, x2 - x1));
-    band.setAttribute("height", quarterHeaderH);
-    band.setAttribute("fill", (q % 2 === 0) ? "#f5f5f5" : "#ffffff");
+    band.setAttribute("height", quarterH);
+    band.setAttribute("fill", (q % 2 === 0) ? "#f3f3f3" : "#ffffff");
     svg.appendChild(band);
 
-    // label
     const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
     label.textContent = `${segStart.getFullYear()} Q${q}`;
     label.setAttribute("x", x1 + 6);
@@ -130,24 +121,22 @@ function drawQuarterHeader(minDate, maxDate, dayWidth, leftOffset, quarterHeader
     cur = segEnd;
   }
 
-  // bottom line
   const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
   line.setAttribute("x1", leftOffset);
-  line.setAttribute("y1", quarterHeaderH);
+  line.setAttribute("y1", quarterH);
   line.setAttribute("x2", svg.getAttribute("width"));
-  line.setAttribute("y2", quarterHeaderH);
+  line.setAttribute("y2", quarterH);
   line.setAttribute("stroke", "#ddd");
   svg.appendChild(line);
 }
 
-function drawDateHeader(minDate, totalDays, dayWidth, leftOffset, quarterHeaderH, dateHeaderH) {
-  const y = quarterHeaderH + 12;
+function drawDateHeader(minDate, totalDays, dayWidth, leftOffset, quarterH) {
+  const y = quarterH + 12;
 
   for (let i = 0; i < totalDays; i++) {
     const d = new Date(minDate);
     d.setDate(d.getDate() + i);
 
-    // label density by zoom
     const show =
       (currentZoom === "day" && (dayWidth >= 18 ? true : d.getDay() === 1)) ||
       (currentZoom === "week" && d.getDay() === 1) ||
@@ -158,9 +147,9 @@ function drawDateHeader(minDate, totalDays, dayWidth, leftOffset, quarterHeaderH
     const x = leftOffset + i * dayWidth + 2;
     const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
 
-    if (currentZoom === "day") t.textContent = `${d.getMonth() + 1}/${d.getDate()}`;
+    if (currentZoom === "day") t.textContent = `${d.getMonth()+1}/${d.getDate()}`;
     if (currentZoom === "week") t.textContent = `Wk ${getWeekNumber(d)}`;
-    if (currentZoom === "month") t.textContent = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    if (currentZoom === "month") t.textContent = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
 
     t.setAttribute("x", x);
     t.setAttribute("y", y);
@@ -169,12 +158,11 @@ function drawDateHeader(minDate, totalDays, dayWidth, leftOffset, quarterHeaderH
     svg.appendChild(t);
   }
 
-  // bottom line
   const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
   line.setAttribute("x1", leftOffset);
-  line.setAttribute("y1", quarterHeaderH + dateHeaderH);
+  line.setAttribute("y1", quarterH + 16);
   line.setAttribute("x2", svg.getAttribute("width"));
-  line.setAttribute("y2", quarterHeaderH + dateHeaderH);
+  line.setAttribute("y2", quarterH + 16);
   line.setAttribute("stroke", "#ddd");
   svg.appendChild(line);
 }
@@ -191,7 +179,6 @@ function drawGrid(totalDays, dayWidth, leftOffset, topMargin) {
 
   for (let i = 0; i < totalDays; i++) {
     const x = leftOffset + i * dayWidth;
-
     const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
     line.setAttribute("x1", x);
     line.setAttribute("y1", 0);
@@ -201,7 +188,6 @@ function drawGrid(totalDays, dayWidth, leftOffset, topMargin) {
     svg.appendChild(line);
   }
 
-  // horizontal top line for task area
   const hline = document.createElementNS("http://www.w3.org/2000/svg", "line");
   hline.setAttribute("x1", leftOffset);
   hline.setAttribute("y1", topMargin);
@@ -215,7 +201,6 @@ function drawTasks(minDate, dayWidth, leftOffset, topMargin, rowHeight, barHeigh
   const milestoneSize = Math.max(10, barHeight);
 
   window.tasks.forEach((t, i) => {
-    // task list
     const row = document.createElement("div");
     row.className = "task-row";
     row.style.paddingLeft = `${t.level * 14}px`;
@@ -223,27 +208,28 @@ function drawTasks(minDate, dayWidth, leftOffset, topMargin, rowHeight, barHeigh
     taskList.appendChild(row);
 
     const y = topMargin + i * rowHeight;
-
     const xStart = leftOffset + ((new Date(t.start) - minDate) / 86400000) * dayWidth;
     const xEnd = leftOffset + ((new Date(t.end) - minDate) / 86400000) * dayWidth;
 
     const base = levelColors[(t.level - 1) % levelColors.length];
-    const remainingColor = adjustColor(base, +70); // lighter
-    const completedColor = adjustColor(base, -30); // darker
+    const remainingColor = adjustColor(base, +70); // light
+    const completedColor = adjustColor(base, -30); // dark
 
     if (t.type === "milestone") {
-      drawRect(xStart, y + Math.floor((rowHeight - milestoneSize) / 2), milestoneSize, milestoneSize, completedColor, true);
+      drawRect(
+        xStart,
+        y + Math.floor((rowHeight - milestoneSize) / 2),
+        milestoneSize,
+        milestoneSize,
+        completedColor,
+        true
+      );
     } else {
       const w = Math.max(6, xEnd - xStart);
       const barY = y + Math.floor((rowHeight - barHeight) / 2);
 
-      // remaining bar (light)
       drawRect(xStart, barY, w, barHeight, remainingColor);
-
-      // completed overlay (dark)
-      if (t.progress > 0) {
-        drawRect(xStart, barY, w * t.progress / 100, barHeight, completedColor);
-      }
+      if (t.progress > 0) drawRect(xStart, barY, w * t.progress / 100, barHeight, completedColor);
     }
   });
 }
