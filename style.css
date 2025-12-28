@@ -49,3 +49,10 @@ body {
   stroke-width: 1.5;
   marker-end: url(#arrow);
 }
+const levelColors = [
+  "#2E7D32", // green
+  "#1565C0", // blue
+  "#C62828", // red
+  "#EF6C00", // orange
+  "#6A1B9A"  // purple
+];
