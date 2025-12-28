@@ -4,7 +4,7 @@ body {
 }
 
 #toolbar button {
-  margin-right: 5px;
+  margin-right: 6px;
 }
 
 #gantt-wrapper {
@@ -14,7 +14,7 @@ body {
 }
 
 #task-list {
-  width: 300px;
+  width: 320px;
   overflow-y: auto;
   border-right: 1px solid #ccc;
   background: #fafafa;
@@ -28,31 +28,13 @@ body {
 .task-row {
   height: 40px;
   line-height: 40px;
-  padding-left: 10px;
+  padding-left: 8px;
   font-size: 12px;
   border-bottom: 1px solid #eee;
   white-space: nowrap;
 }
 
-.task-bar {
-  rx: 4;
-  ry: 4;
-}
-
 .milestone {
   transform: rotate(45deg);
+  transform-origin: center;
 }
-
-.dependency {
-  fill: none;
-  stroke: #555;
-  stroke-width: 1.5;
-  marker-end: url(#arrow);
-}
-const levelColors = [
-  "#2E7D32", // green
-  "#1565C0", // blue
-  "#C62828", // red
-  "#EF6C00", // orange
-  "#6A1B9A"  // purple
-];
