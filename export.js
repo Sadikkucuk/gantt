@@ -1,4 +1,4 @@
-console.log("export.js loaded v12");
+console.log("export.js loaded v13");
 
 function exportPNG() {
   const el = document.getElementById("gantt-wrapper");
@@ -10,96 +10,140 @@ function exportPNG() {
   });
 }
 
+// PDF: full task list + full timeline (no cropping) + auto-fit
 async function exportPDF() {
   if (!window.tasks || window.tasks.length === 0) return;
 
-  const wrapper = document.getElementById("gantt-wrapper");
   const taskListEl = document.getElementById("task-list");
-  const svgEl = document.getElementById("gantt-svg");
   const timelineEl = document.getElementById("timeline");
+  const wrapperEl = document.getElementById("gantt-wrapper");
+  const svgEl = document.getElementById("gantt-svg");
 
-  // Save current view
+  // Save current UI state
   const savedZoom = currentZoom;
   const savedPreset = currentPresetIndex;
   const savedScrollLeft = timelineEl.scrollLeft;
   const savedScrollTop = timelineEl.scrollTop;
 
-  try {
-    // --- Export için geçici küçültme (font / bar / row) ---
-    // PDF için genelde compact2 iyi çalışır; çok büyük chart'ta compact3 + month
-    applyPreset(2);
-    renderGantt();
+  // Helper: choose compact settings for export (fonts/bars smaller)
+  const chooseExportLayout = async () => {
+    // Try progressively more compact; if still too wide, switch zoom to month
+    const candidates = [
+      { zoom: currentZoom, preset: 2 },
+      { zoom: currentZoom, preset: 3 },
+      { zoom: "week", preset: 3 },
+      { zoom: "month", preset: 3 }
+    ];
 
-    // Eğer hala çok genişse, export sırasında month'a düş
-    const fullSvgW = parseFloat(svgEl.getAttribute("width")) || 0;
-    if (fullSvgW > 8000) {
-      currentZoom = "month";
-      applyPreset(3);
+    const measure = () => {
+      // IMPORTANT: scrollWidth gives FULL content width even if overflowed
+      const taskW = taskListEl.scrollWidth;
+      const timeW = timelineEl.scrollWidth;
+      const fullW = Math.ceil(taskW + timeW);
+
+      const fullH = Math.ceil(
+        Math.max(taskListEl.scrollHeight, timelineEl.scrollHeight, svgEl.getBoundingClientRect().height)
+      );
+
+      return { taskW, timeW, fullW, fullH };
+    };
+
+    for (const c of candidates) {
+      currentZoom = c.zoom;
+      applyPreset(c.preset);
       renderGantt();
+      await new Promise(r => setTimeout(r, 80));
+
+      const m = measure();
+      // canvas size çok büyürse html2canvas bazen sadece sol tarafı yakalar.
+      // Bu yüzden makul bir üst limit hedefliyoruz.
+      if (m.fullW <= 6500 && m.fullH <= 6500) return m;
     }
 
-    // Scroll'ları 0'a çek (clone'a temiz basmak için)
+    // None fit under threshold; return the last measure anyway
+    return measure();
+  };
+
+  // Build an off-screen export container that contains FULL content (no scroll clipping)
+  const buildExportNode = (m) => {
+    const exportNode = document.createElement("div");
+    exportNode.style.position = "fixed";
+    exportNode.style.left = "-100000px";
+    exportNode.style.top = "0";
+    exportNode.style.background = "#ffffff";
+    exportNode.style.display = "flex";
+    exportNode.style.flexDirection = "row";
+    exportNode.style.width = `${m.fullW}px`;
+    exportNode.style.height = `${m.fullH}px`;
+    exportNode.style.overflow = "visible";
+
+    const taskClone = taskListEl.cloneNode(true);
+    taskClone.style.overflow = "visible";
+    taskClone.style.width = `${m.taskW}px`;
+    taskClone.style.height = `${m.fullH}px`;
+    taskClone.style.flex = "0 0 auto";
+
+    const timeClone = timelineEl.cloneNode(true);
+    timeClone.style.overflow = "visible";
+    timeClone.style.width = `${m.timeW}px`;
+    timeClone.style.height = `${m.fullH}px`;
+    timeClone.style.flex = "0 0 auto";
+    timeClone.scrollLeft = 0;
+    timeClone.scrollTop = 0;
+
+    // Ensure cloned SVG keeps explicit width/height so html2canvas paints it
+    const clonedSvg = timeClone.querySelector("#gantt-svg");
+    if (clonedSvg) {
+      const wAttr = svgEl.getAttribute("width");
+      const hAttr = svgEl.getAttribute("height");
+      if (wAttr) clonedSvg.setAttribute("width", wAttr);
+      if (hAttr) clonedSvg.setAttribute("height", hAttr);
+      clonedSvg.style.display = "block";
+    }
+
+    exportNode.appendChild(taskClone);
+    exportNode.appendChild(timeClone);
+
+    return exportNode;
+  };
+
+  try {
+    // Export için kompaktlaştır + ölç
+    const m = await chooseExportLayout();
+
+    // Scrollları sıfırla (ölçüm/tutarlılık için)
     timelineEl.scrollLeft = 0;
     timelineEl.scrollTop = 0;
 
-    // Full dimensions (px)
-    const taskW = taskListEl.getBoundingClientRect().width;
-    const svgW = parseFloat(svgEl.getAttribute("width")) || svgEl.getBBox().width;
-    const svgH = parseFloat(svgEl.getAttribute("height")) || svgEl.getBBox().height;
+    // Off-screen export node
+    const exportNode = buildExportNode(m);
+    document.body.appendChild(exportNode);
 
-    const fullW = Math.ceil(taskW + svgW);
-    const fullH = Math.ceil(Math.max(taskListEl.scrollHeight, svgH));
-
-    // --- Off-screen clone: overflow kırpılmasın ---
-    const clone = wrapper.cloneNode(true);
-    clone.style.position = "fixed";
-    clone.style.left = "-100000px";
-    clone.style.top = "0";
-    clone.style.width = fullW + "px";
-    clone.style.height = fullH + "px";
-    clone.style.overflow = "visible";
-    clone.style.background = "#ffffff";
-    clone.id = "gantt-export-clone";
-
-    const cloneTaskList = clone.querySelector("#task-list");
-    const cloneTimeline = clone.querySelector("#timeline");
-    const cloneSvg = clone.querySelector("#gantt-svg");
-
-    cloneTaskList.style.overflow = "visible";
-    cloneTaskList.style.height = fullH + "px";
-    cloneTimeline.style.overflow = "visible";
-    cloneTimeline.style.height = fullH + "px";
-    cloneTimeline.style.width = (fullW - taskW) + "px";
-
-    cloneSvg.setAttribute("width", svgW);
-    cloneSvg.setAttribute("height", svgH);
-
-    document.body.appendChild(clone);
-
-    // Canvas capture (full area)
-    const canvas = await html2canvas(clone, {
+    // Render to canvas (full width/height)
+    const canvas = await html2canvas(exportNode, {
       scale: 2,
       backgroundColor: "#ffffff",
-      width: fullW,
-      height: fullH,
-      windowWidth: fullW,
-      windowHeight: fullH,
+      width: m.fullW,
+      height: m.fullH,
+      windowWidth: m.fullW,
+      windowHeight: m.fullH,
       scrollX: 0,
-      scrollY: 0
+      scrollY: 0,
+      useCORS: true
     });
 
-    document.body.removeChild(clone);
+    document.body.removeChild(exportNode);
 
-    // --- PDF Autofit ---
+    // PDF auto-fit (A4 landscape)
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF("l", "pt", "a4");
 
     const pageW = pdf.internal.pageSize.getWidth();
     const pageH = pdf.internal.pageSize.getHeight();
 
-    const scale = Math.min(pageW / canvas.width, pageH / canvas.height);
-    const w = canvas.width * scale;
-    const h = canvas.height * scale;
+    const s = Math.min(pageW / canvas.width, pageH / canvas.height);
+    const w = canvas.width * s;
+    const h = canvas.height * s;
 
     pdf.addImage(
       canvas.toDataURL("image/png"),
@@ -112,7 +156,7 @@ async function exportPDF() {
 
     pdf.save("gantt-autofit.pdf");
   } finally {
-    // Restore
+    // Restore original UI state
     currentZoom = savedZoom;
     applyPreset(savedPreset);
     renderGantt();
