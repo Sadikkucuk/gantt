@@ -1,0 +1,51 @@
+body {
+  font-family: Arial, sans-serif;
+  margin: 20px;
+}
+
+#toolbar button {
+  margin-right: 5px;
+}
+
+#gantt-wrapper {
+  display: flex;
+  height: 75vh;
+  border: 1px solid #ccc;
+}
+
+#task-list {
+  width: 300px;
+  overflow-y: auto;
+  border-right: 1px solid #ccc;
+  background: #fafafa;
+}
+
+#timeline {
+  flex: 1;
+  overflow: auto;
+}
+
+.task-row {
+  height: 40px;
+  line-height: 40px;
+  padding-left: 10px;
+  font-size: 12px;
+  border-bottom: 1px solid #eee;
+  white-space: nowrap;
+}
+
+.task-bar {
+  rx: 4;
+  ry: 4;
+}
+
+.milestone {
+  transform: rotate(45deg);
+}
+
+.dependency {
+  fill: none;
+  stroke: #555;
+  stroke-width: 1.5;
+  marker-end: url(#arrow);
+}
