@@ -109,6 +109,8 @@ function drawGrid(minDate, totalDays, dayWidth) {
 
 function drawTasks(minDate, dayWidth) {
   window.tasks.forEach((t, i) => {
+
+    // LEFT LIST
     const row = document.createElement("div");
     row.className = "task-row";
     row.style.paddingLeft = `${t.level * 14}px`;
@@ -120,13 +122,22 @@ function drawTasks(minDate, dayWidth) {
     const xEnd = leftOffset + ((new Date(t.end) - minDate) / 86400000) * dayWidth;
 
     const baseColor = levelColors[(t.level - 1) % levelColors.length];
-    const remainingColor = adjustColor(baseColor, 70);
-    const completedColor = adjustColor(baseColor, -20);
+    const remainingColor = adjustColor(baseColor, +70);
+    const completedColor = adjustColor(baseColor, -30);
 
     if (t.type === "milestone") {
       drawRect(xStart, y + 12, 12, 12, completedColor, true);
     } else {
-      drawRect(xStart, y + 10, Math.max(xEnd - xStart, 4), 20, remainingColor);
+      // REMAINING
+      drawRect(
+        xStart,
+        y + 10,
+        Math.max(xEnd - xStart, 6),
+        20,
+        remainingColor
+      );
+
+      // COMPLETED
       if (t.progress > 0) {
         drawRect(
           xStart,
@@ -139,6 +150,7 @@ function drawTasks(minDate, dayWidth) {
     }
   });
 }
+
 
 function drawRect(x, y, w, h, color, milestone = false) {
   const r = document.createElementNS("http://www.w3.org/2000/svg", "rect");
