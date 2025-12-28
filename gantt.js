@@ -21,6 +21,18 @@ function setZoom(z) {
   currentZoom = z;
   renderGantt();
 }
+function adjustColor(hex, percent) {
+  let num = parseInt(hex.replace("#", ""), 16),
+      r = (num >> 16) + percent,
+      g = ((num >> 8) & 0x00FF) + percent,
+      b = (num & 0x0000FF) + percent;
+
+  r = Math.min(255, Math.max(0, r));
+  g = Math.min(255, Math.max(0, g));
+  b = Math.min(255, Math.max(0, b));
+
+  return `rgb(${r},${g},${b})`;
+}
 
 function renderGantt() {
   if (!window.tasks || window.tasks.length === 0) return;
