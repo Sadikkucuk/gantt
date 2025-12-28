@@ -1,55 +1,32 @@
 function exportPNG() {
-  const el = document.getElementById("gantt-wrapper");
-
-  html2canvas(el, {
-    scale: 2,
-    backgroundColor: "#ffffff"
-  }).then(canvas => {
-    const link = document.createElement("a");
-    link.download = "gantt.png";
-    link.href = canvas.toDataURL("image/png");
-    link.click();
-  });
+  html2canvas(document.getElementById("gantt-wrapper"), { scale: 2 })
+    .then(c => {
+      const a = document.createElement("a");
+      a.href = c.toDataURL();
+      a.download = "gantt.png";
+      a.click();
+    });
 }
 
 function exportPDF() {
-  const el = document.getElementById("gantt-wrapper");
+  html2canvas(document.getElementById("gantt-wrapper"), { scale: 2 })
+    .then(c => {
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF("l", "pt", "a4");
 
-  html2canvas(el, {
-    scale: 2,
-    backgroundColor: "#ffffff"
-  }).then(canvas => {
+      const pw = pdf.internal.pageSize.getWidth();
+      const ph = pdf.internal.pageSize.getHeight();
+      const scale = Math.min(pw / c.width, ph / c.height);
 
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF("l", "pt", "a4");
+      pdf.addImage(
+        c.toDataURL(),
+        "PNG",
+        (pw - c.width * scale) / 2,
+        (ph - c.height * scale) / 2,
+        c.width * scale,
+        c.height * scale
+      );
 
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
-
-    const imgWidth = canvas.width;
-    const imgHeight = canvas.height;
-
-    // 🔑 AUTO FIT SCALE
-    const scale = Math.min(
-      pageWidth / imgWidth,
-      pageHeight / imgHeight
-    );
-
-    const renderWidth = imgWidth * scale;
-    const renderHeight = imgHeight * scale;
-
-    const xOffset = (pageWidth - renderWidth) / 2;
-    const yOffset = (pageHeight - renderHeight) / 2;
-
-    pdf.addImage(
-      canvas.toDataURL("image/png"),
-      "PNG",
-      xOffset,
-      yOffset,
-      renderWidth,
-      renderHeight
-    );
-
-    pdf.save("gantt-autofit.pdf");
-  });
+      pdf.save("gantt-autofit.pdf");
+    });
 }
