@@ -1,25 +1,3 @@
-// ===== COLOR SYSTEM (FINAL) =====
-const levelColors = [
-  "#2E7D32", // green
-  "#1565C0", // blue
-  "#C62828", // red
-  "#EF6C00", // orange
-  "#6A1B9A"  // purple
-];
-
-function adjustColor(hex, delta) {
-  const num = parseInt(hex.replace("#", ""), 16);
-  let r = (num >> 16) + delta;
-  let g = ((num >> 8) & 0xff) + delta;
-  let b = (num & 0xff) + delta;
-
-  r = Math.max(0, Math.min(255, r));
-  g = Math.max(0, Math.min(255, g));
-  b = Math.max(0, Math.min(255, b));
-
-  return `rgb(${r}, ${g}, ${b})`;
-}
-
 const svg = document.getElementById("gantt-svg");
 const taskList = document.getElementById("task-list");
 
@@ -30,40 +8,41 @@ const rowHeight = 40;
 const leftOffset = 200;
 const topMargin = 30;
 
-// 5-level fixed color palette
-const levelColors = [
-  "#2E7D32", // green
-  "#1565C0", // blue
-  "#C62828", // red
-  "#EF6C00", // orange
-  "#6A1B9A"  // purple
-];
+// COLOR PALETTE
+const levelColors = ["#2E7D32", "#1565C0", "#C62828", "#EF6C00", "#6A1B9A"];
+
+function adjustColor(hex, delta) {
+  const num = parseInt(hex.slice(1), 16);
+  const r = Math.min(255, Math.max(0, (num >> 16) + delta));
+  const g = Math.min(255, Math.max(0, ((num >> 8) & 255) + delta));
+  const b = Math.min(255, Math.max(0, (num & 255) + delta));
+  return `rgb(${r},${g},${b})`;
+}
 
 document.getElementById("csvInput").addEventListener("change", e => {
   const reader = new FileReader();
   reader.onload = () => {
-    window.tasks = parseCSV(reader.result);
-    renderGantt();
+    try {
+      window.tasks = parseCSV(reader.result);
+      if (!window.tasks.length) {
+        alert("CSV parsed but no valid tasks found.");
+        return;
+      }
+      renderGantt();
+    } catch (err) {
+      console.error("Render error:", err);
+      alert("JS error. Open browser console (F12).");
+    }
   };
   reader.readAsText(e.target.files[0]);
 });
 
 function setZoom(z) {
   currentZoom = z;
-  renderGantt();
-}
-
-function adjustColor(hex, delta) {
-  let num = parseInt(hex.slice(1), 16);
-  let r = Math.min(255, Math.max(0, (num >> 16) + delta));
-  let g = Math.min(255, Math.max(0, ((num >> 8) & 0xff) + delta));
-  let b = Math.min(255, Math.max(0, (num & 0xff) + delta));
-  return `rgb(${r},${g},${b})`;
+  if (window.tasks) renderGantt();
 }
 
 function renderGantt() {
-  if (!window.tasks) return;
-
   svg.innerHTML = "";
   taskList.innerHTML = "";
 
@@ -72,7 +51,7 @@ function renderGantt() {
   const maxDate = new Date(Math.max(...dates));
 
   const dayWidth = zoomPx[currentZoom];
-  const totalDays = Math.ceil((maxDate - minDate) / 86400000) + 1;
+  const totalDays = Math.max(1, Math.ceil((maxDate - minDate) / 86400000) + 1);
 
   svg.setAttribute("width", leftOffset + totalDays * dayWidth);
   svg.setAttribute("height", topMargin + window.tasks.length * rowHeight);
@@ -92,25 +71,11 @@ function drawGrid(minDate, totalDays, dayWidth) {
     line.setAttribute("y2", svg.getAttribute("height"));
     line.setAttribute("stroke", "#eee");
     svg.appendChild(line);
-
-    const d = new Date(minDate);
-    d.setDate(d.getDate() + i);
-
-    if (currentZoom === "day" || d.getDate() === 1) {
-      const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
-      label.textContent = `${d.getMonth() + 1}/${d.getDate()}`;
-      label.setAttribute("x", x + 2);
-      label.setAttribute("y", 15);
-      label.setAttribute("font-size", "10");
-      svg.appendChild(label);
-    }
   }
 }
 
 function drawTasks(minDate, dayWidth) {
   window.tasks.forEach((t, i) => {
-
-    // LEFT LIST
     const row = document.createElement("div");
     row.className = "task-row";
     row.style.paddingLeft = `${t.level * 14}px`;
@@ -121,36 +86,20 @@ function drawTasks(minDate, dayWidth) {
     const xStart = leftOffset + ((new Date(t.start) - minDate) / 86400000) * dayWidth;
     const xEnd = leftOffset + ((new Date(t.end) - minDate) / 86400000) * dayWidth;
 
-    const baseColor = levelColors[(t.level - 1) % levelColors.length];
-    const remainingColor = adjustColor(baseColor, +70);
-    const completedColor = adjustColor(baseColor, -30);
+    const base = levelColors[(t.level - 1) % levelColors.length];
+    const rem = adjustColor(base, 60);
+    const done = adjustColor(base, -30);
 
     if (t.type === "milestone") {
-      drawRect(xStart, y + 12, 12, 12, completedColor, true);
+      drawRect(xStart, y + 12, 12, 12, done, true);
     } else {
-      // REMAINING
-      drawRect(
-        xStart,
-        y + 10,
-        Math.max(xEnd - xStart, 6),
-        20,
-        remainingColor
-      );
-
-      // COMPLETED
+      drawRect(xStart, y + 10, Math.max(4, xEnd - xStart), 20, rem);
       if (t.progress > 0) {
-        drawRect(
-          xStart,
-          y + 10,
-          (xEnd - xStart) * t.progress / 100,
-          20,
-          completedColor
-        );
+        drawRect(xStart, y + 10, (xEnd - xStart) * t.progress / 100, 20, done);
       }
     }
   });
 }
-
 
 function drawRect(x, y, w, h, color, milestone = false) {
   const r = document.createElementNS("http://www.w3.org/2000/svg", "rect");
