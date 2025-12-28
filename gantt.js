@@ -2,11 +2,20 @@ const svg = document.getElementById("gantt-svg");
 const taskList = document.getElementById("task-list");
 
 let currentZoom = "day";
-const zoomPx = { day: 30, week: 10, month: 6 };
+const zoomPx = { day: 30, week: 12, month: 6 };
 
 const rowHeight = 40;
-const leftMargin = 10;
+const leftOffset = 200;
 const topMargin = 30;
+
+// 5-level fixed color palette
+const levelColors = [
+  "#2E7D32", // green
+  "#1565C0", // blue
+  "#C62828", // red
+  "#EF6C00", // orange
+  "#6A1B9A"  // purple
+];
 
 document.getElementById("csvInput").addEventListener("change", e => {
   const reader = new FileReader();
@@ -21,21 +30,17 @@ function setZoom(z) {
   currentZoom = z;
   renderGantt();
 }
-function adjustColor(hex, percent) {
-  let num = parseInt(hex.replace("#", ""), 16),
-      r = (num >> 16) + percent,
-      g = ((num >> 8) & 0x00FF) + percent,
-      b = (num & 0x0000FF) + percent;
 
-  r = Math.min(255, Math.max(0, r));
-  g = Math.min(255, Math.max(0, g));
-  b = Math.min(255, Math.max(0, b));
-
+function adjustColor(hex, delta) {
+  let num = parseInt(hex.slice(1), 16);
+  let r = Math.min(255, Math.max(0, (num >> 16) + delta));
+  let g = Math.min(255, Math.max(0, ((num >> 8) & 0xff) + delta));
+  let b = Math.min(255, Math.max(0, (num & 0xff) + delta));
   return `rgb(${r},${g},${b})`;
 }
 
 function renderGantt() {
-  if (!window.tasks || window.tasks.length === 0) return;
+  if (!window.tasks) return;
 
   svg.innerHTML = "";
   taskList.innerHTML = "";
@@ -47,8 +52,8 @@ function renderGantt() {
   const dayWidth = zoomPx[currentZoom];
   const totalDays = Math.ceil((maxDate - minDate) / 86400000) + 1;
 
-  svg.setAttribute("width", totalDays * dayWidth + 200);
-  svg.setAttribute("height", window.tasks.length * rowHeight + topMargin);
+  svg.setAttribute("width", leftOffset + totalDays * dayWidth);
+  svg.setAttribute("height", topMargin + window.tasks.length * rowHeight);
 
   drawGrid(minDate, totalDays, dayWidth);
   drawTasks(minDate, dayWidth);
@@ -56,7 +61,7 @@ function renderGantt() {
 
 function drawGrid(minDate, totalDays, dayWidth) {
   for (let i = 0; i < totalDays; i++) {
-    const x = i * dayWidth + 200;
+    const x = leftOffset + i * dayWidth;
 
     const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
     line.setAttribute("x1", x);
@@ -82,7 +87,6 @@ function drawGrid(minDate, totalDays, dayWidth) {
 
 function drawTasks(minDate, dayWidth) {
   window.tasks.forEach((t, i) => {
-    // left list
     const row = document.createElement("div");
     row.className = "task-row";
     row.style.paddingLeft = `${t.level * 14}px`;
@@ -90,30 +94,24 @@ function drawTasks(minDate, dayWidth) {
     taskList.appendChild(row);
 
     const y = topMargin + i * rowHeight;
+    const xStart = leftOffset + ((new Date(t.start) - minDate) / 86400000) * dayWidth;
+    const xEnd = leftOffset + ((new Date(t.end) - minDate) / 86400000) * dayWidth;
 
-    const xStart =
-      200 + ((new Date(t.start) - minDate) / 86400000) * dayWidth;
-    const xEnd =
-      200 + ((new Date(t.end) - minDate) / 86400000) * dayWidth;
+    const baseColor = levelColors[(t.level - 1) % levelColors.length];
+    const remainingColor = adjustColor(baseColor, 70);
+    const completedColor = adjustColor(baseColor, -20);
 
     if (t.type === "milestone") {
-      drawRect(xStart, y + 12, 12, 12, t.color || "#000", true);
+      drawRect(xStart, y + 12, 12, 12, completedColor, true);
     } else {
-      drawRect(
-        xStart,
-        y + 10,
-        Math.max(xEnd - xStart, 4),
-        20,
-        t.color || "#4caf50"
-      );
-
+      drawRect(xStart, y + 10, Math.max(xEnd - xStart, 4), 20, remainingColor);
       if (t.progress > 0) {
         drawRect(
           xStart,
           y + 10,
           (xEnd - xStart) * t.progress / 100,
           20,
-          "rgba(0,0,0,0.25)"
+          completedColor
         );
       }
     }
