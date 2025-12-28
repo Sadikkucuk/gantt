@@ -1,3 +1,8 @@
+:root{
+  --row-height: 40px;
+  --task-font-size: 12px;
+}
+
 body {
   font-family: Arial, sans-serif;
   margin: 20px;
@@ -26,10 +31,10 @@ body {
 }
 
 .task-row {
-  height: 40px;
-  line-height: 40px;
+  height: var(--row-height);
+  line-height: var(--row-height);
   padding-left: 8px;
-  font-size: 12px;
+  font-size: var(--task-font-size);
   border-bottom: 1px solid #eee;
   white-space: nowrap;
 }
