@@ -1,34 +1,53 @@
 function exportPNG() {
-  html2canvas(document.getElementById("gantt-wrapper"), { scale: 2 })
-    .then(canvas => {
-      const a = document.createElement("a");
-      a.download = "gantt.png";
-      a.href = canvas.toDataURL();
-      a.click();
-    });
+  const el = document.getElementById("gantt-wrapper");
+
+  html2canvas(el, {
+    scale: 2,
+    backgroundColor: "#ffffff"
+  }).then(canvas => {
+    const link = document.createElement("a");
+    link.download = "gantt.png";
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+  });
 }
 
 function exportPDF() {
-  const container = document.getElementById("gantt-wrapper");
+  const el = document.getElementById("gantt-wrapper");
 
-  html2canvas(container, { scale: 2 }).then(canvas => {
+  html2canvas(el, {
+    scale: 2,
+    backgroundColor: "#ffffff"
+  }).then(canvas => {
+
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF("l", "pt", "a4");
 
-    const pageW = pdf.internal.pageSize.getWidth();
-    const pageH = pdf.internal.pageSize.getHeight();
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
 
-    const scale = Math.min(pageW / canvas.width, pageH / canvas.height);
-    const w = canvas.width * scale;
-    const h = canvas.height * scale;
+    const imgWidth = canvas.width;
+    const imgHeight = canvas.height;
+
+    // 🔑 AUTO FIT SCALE
+    const scale = Math.min(
+      pageWidth / imgWidth,
+      pageHeight / imgHeight
+    );
+
+    const renderWidth = imgWidth * scale;
+    const renderHeight = imgHeight * scale;
+
+    const xOffset = (pageWidth - renderWidth) / 2;
+    const yOffset = (pageHeight - renderHeight) / 2;
 
     pdf.addImage(
       canvas.toDataURL("image/png"),
       "PNG",
-      (pageW - w) / 2,
-      (pageH - h) / 2,
-      w,
-      h
+      xOffset,
+      yOffset,
+      renderWidth,
+      renderHeight
     );
 
     pdf.save("gantt-autofit.pdf");
