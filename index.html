@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Online Gantt (GitHub Pages)</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<h2>Online Gantt (CSV → Gantt)</h2>
+
+<div id="toolbar">
+  <input type="file" id="csvInput" accept=".csv">
+  <button onclick="setZoom('day')">Day</button>
+  <button onclick="setZoom('week')">Week</button>
+  <button onclick="setZoom('month')">Month</button>
+  <button onclick="exportPNG()">Export PNG</button>
+  <button onclick="exportPDF()">Export PDF</button>
+</div>
+
+<div id="gantt-wrapper">
+  <div id="task-list"></div>
+  <div id="timeline">
+    <svg id="gantt-svg"></svg>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+
+<script src="csvParser.js"></script>
+<script src="gantt.js"></script>
+<script src="export.js"></script>
+
+</body>
+</html>
