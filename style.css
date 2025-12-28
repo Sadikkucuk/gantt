@@ -3,14 +3,8 @@
   --task-font-size: 12px;
 }
 
-body {
-  font-family: Arial, sans-serif;
-  margin: 20px;
-}
-
-#toolbar button {
-  margin-right: 6px;
-}
+body { font-family: Arial, sans-serif; margin: 20px; }
+#toolbar button { margin-right: 6px; }
 
 #gantt-wrapper {
   display: flex;
@@ -25,10 +19,7 @@ body {
   background: #fafafa;
 }
 
-#timeline {
-  flex: 1;
-  overflow: auto;
-}
+#timeline { flex: 1; overflow: auto; }
 
 .task-row {
   height: var(--row-height);
